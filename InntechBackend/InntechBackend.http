@@ -1,0 +1,6 @@
+@InntechBackend_HostAddress = http://localhost:5171
+
+GET {{InntechBackend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
