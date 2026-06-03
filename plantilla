@@ -1,0 +1,189 @@
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+
+// Asegúrate de que este puerto coincida con tu backend en ejecución
+const API_URL = "http://localhost:5171/api/Equipos";
+
+function App() {
+  // ==========================================
+  // 1. ESTADO DE LA APLICACIÓN
+  // ==========================================
+  const [equipos, setEquipos] = useState([]); // Guarda la lista de la BD
+  const [form, setForm] = useState({ nombre: '', descripcion: '', imagenUrl: '' }); // Datos del formulario
+  const [editandoId, setEditandoId] = useState(null); // Saber si estamos creando o editando
+
+  // ==========================================
+  // 2. CICLO DE VIDA (Cargar al iniciar)
+  // ==========================================
+  useEffect(() => {
+    cargarEquipos();
+  }, []);
+
+  // ==========================================
+  // 3. FUNCIONES LÓGICAS (Peticiones HTTP)
+  // ==========================================
+  
+  // LEER (GET)
+  const cargarEquipos = async () => {
+    try {
+      const response = await axios.get(API_URL);
+      setEquipos(response.data);
+    } catch (error) {
+      console.error("Error al cargar equipos:", error);
+    }
+  };
+
+  // MANEJAR CAMBIOS EN LOS INPUTS
+  const handleChange = (e) => {
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  // CREAR (POST) o ACTUALIZAR (PUT)
+  const handleSubmit = async (e) => {
+    e.preventDefault(); // Evita que la página se recargue
+    try {
+      if (editandoId) {
+        // Si hay un ID en edición, hacemos PUT
+        // Nota: .NET requiere que el ID vaya en la URL y también dentro del objeto JSON
+        await axios.put(`${API_URL}/${editandoId}`, { ...form, id: editandoId });
+      } else {
+        // Si no hay ID, es un registro nuevo, hacemos POST
+        await axios.post(API_URL, form);
+      }
+      
+      // Limpiar el formulario y recargar la tabla
+      setForm({ nombre: '', descripcion: '', imagenUrl: '' });
+      setEditandoId(null);
+      cargarEquipos();
+    } catch (error) {
+      console.error("Error al guardar:", error);
+    }
+  };
+
+  // PREPARAR EDICIÓN (Pasar datos de la fila al formulario)
+  const handleEdit = (equipo) => {
+    setForm({
+      nombre: equipo.nombre,
+      descripcion: equipo.descripcion,
+      imagenUrl: equipo.imagenUrl
+    });
+    setEditandoId(equipo.id);
+  };
+
+  // ELIMINAR (DELETE)
+  const handleDelete = async (id) => {
+    // Pequeña confirmación por seguridad
+    if (!window.confirm("¿Estás seguro de eliminar este equipo?")) return;
+
+    try {
+      await axios.delete(`${API_URL}/${id}`);
+      cargarEquipos();
+    } catch (error) {
+      console.error("Error al eliminar:", error);
+    }
+  };
+
+  // ==========================================
+  // 4. RENDERIZADO VISUAL (JSX)
+  // ==========================================
+  return (
+    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px', fontFamily: 'sans-serif' }}>
+      <h1>Gestión de Equipos</h1>
+
+      {/* FORMULARIO */}
+      <div style={{ backgroundColor: '#f4f4f4', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
+        <h2>{editandoId ? "Editar Equipo" : "Nuevo Equipo"}</h2>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          
+          <input
+            type="text"
+            name="nombre"
+            placeholder="Nombre del equipo"
+            value={form.nombre}
+            onChange={handleChange}
+            required
+          />
+          
+          <input
+            type="text"
+            name="descripcion"
+            placeholder="Descripción"
+            value={form.descripcion}
+            onChange={handleChange}
+            required
+          />
+          
+          <input
+            type="text"
+            name="imagenUrl"
+            placeholder="URL de la imagen"
+            value={form.imagenUrl}
+            onChange={handleChange}
+          />
+          
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button type="submit" style={{ backgroundColor: '#28a745', color: 'white', padding: '10px', border: 'none', cursor: 'pointer' }}>
+              {editandoId ? "Guardar Cambios" : "Agregar Equipo"}
+            </button>
+            
+            {/* Botón para cancelar la edición */}
+            {editandoId && (
+              <button 
+                type="button" 
+                onClick={() => { setEditandoId(null); setForm({ nombre: '', descripcion: '', imagenUrl: '' }); }}
+                style={{ backgroundColor: '#6c757d', color: 'white', padding: '10px', border: 'none', cursor: 'pointer' }}
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
+
+      {/* TABLA/LISTA DE DATOS */}
+      <h2>Lista Actual</h2>
+      {equipos.length === 0 ? (
+        <p>No hay equipos registrados en la base de datos.</p>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <thead>
+            <tr style={{ backgroundColor: '#343a40', color: 'white' }}>
+              <th style={{ padding: '10px' }}>ID</th>
+              <th style={{ padding: '10px' }}>Nombre</th>
+              <th style={{ padding: '10px' }}>Descripción</th>
+              <th style={{ padding: '10px' }}>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {equipos.map((equipo) => (
+              <tr key={equipo.id} style={{ borderBottom: '1px solid #ddd' }}>
+                <td style={{ padding: '10px' }}>{equipo.id}</td>
+                <td style={{ padding: '10px' }}><strong>{equipo.nombre}</strong></td>
+                <td style={{ padding: '10px' }}>{equipo.descripcion}</td>
+                <td style={{ padding: '10px', display: 'flex', gap: '10px' }}>
+                  <button 
+                    onClick={() => handleEdit(equipo)}
+                    style={{ backgroundColor: '#007bff', color: 'white', border: 'none', padding: '5px 10px', cursor: 'pointer' }}
+                  >
+                    Editar
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(equipo.id)}
+                    style={{ backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '5px 10px', cursor: 'pointer' }}
+                  >
+                    Quitar
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+export default App;
